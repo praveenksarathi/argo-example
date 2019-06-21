@@ -4,6 +4,10 @@ metadata:
   generateName: combined-
 spec:
   entrypoint: combined-example
+  volumes:
+  - name: my-secret-vol
+    secret:
+      secretName: my-k8s-secret
   volumeClaimTemplates:
   - metadata:
       name: workdir
@@ -41,6 +45,10 @@ spec:
     - - name: read-file
         template: read
         when: "({{inputs.parameters.input-value}} == 12) && ({{inputs.parameters.enable-volume}} == true)"
+
+    - - name: check-secret
+        template: secret-check
+        when: "({{inputs.parameters.input-value}} == 14) && ({{inputs.parameters.enable-volume}} == true)"
 
     - - name: test-equals
         template: equals-conditional
@@ -150,11 +158,13 @@ spec:
       image: docker/whalesay:latest
       command: [sh, -c]
       args: ["cowsay no the data are not equal"]
+
   - name: equals-conditional
     container:
       image: docker/whalesay:latest
       command: [sh, -c]
       args: ["cowsay the values are equal"]
+
   - name: or-conditional
     container:
       image: docker/whalesay:latest
@@ -192,6 +202,20 @@ spec:
       image: docker/whalesay:latest
       command: [cowsay]
       args: ["Welcome Mr.{{inputs.parameters.firstname}} {{inputs.parameters.lastname}}"]
+  - name: secret-check
+    container:
+      image: alpine:3.6
+      command: [sh, -c]
+      args: ["echo The Secret was  $MYSECRETPASSWORD"]
+      env:
+      - name: MYSECRETPASSWORD  
+        valueFrom:
+          secretKeyRef:
+            name: my-secret     
+            key: mypassword     
+      volumeMounts:
+      - name: my-secret-vol 
+        mountPath: "/secret/mountpath"
 
   - name: exit-handler
     steps:
